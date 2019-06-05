@@ -1029,7 +1029,7 @@ Notification.prototype = {
 
     destroy: function(reason) {
         this._destroyedReason = reason;
-        this.actor.destroy();
+        if (!isFinalized(this.actor)) this.actor.destroy();
     }
 };
 Signals.addSignalMethods(Notification.prototype);

@@ -821,7 +821,7 @@ var Switch = class Switch {
     }
 
     setToggleState(state) {
-        if (this.actor.is_finalized()) return;
+        if (isFinalized(this.actor)) return;
         this.actor.change_style_pseudo_class('checked', state);
         this.state = state;
     }
@@ -1859,12 +1859,13 @@ var PopupMenuBase = class PopupMenuBase {
             return;
 
         let childBeforeIndex = index - 1;
+        let previousChild = children[childBeforeIndex];
 
-        while (childBeforeIndex >= 0 && !children[childBeforeIndex].visible)
+        while (childBeforeIndex >= 0 && !previousChild.visible)
             childBeforeIndex--;
 
         if (childBeforeIndex < 0
-            || children[childBeforeIndex].maybeGet("_delegate") instanceof PopupSeparatorMenuItem) {
+            || (previousChild && previousChild._delegate && previousChild._delegate instanceof PopupSeparatorMenuItem)) {
             menuItem.actor.hide();
             return;
         }
@@ -1958,10 +1959,10 @@ var PopupMenuBase = class PopupMenuBase {
         let columnWidths = [];
         let items = this.box.get_children();
         for (let i = 0; i < items.length; i++) {
-            if (!items[i].visible)
-                continue;
-            if (items[i].maybeGet("_delegate") instanceof PopupBaseMenuItem || items[i].maybeGet("_delegate") instanceof PopupMenuBase) {
-                let itemColumnWidths = items[i]._delegate.getColumnWidths();
+            let item = items[i];
+            if (!item._delegate || !item.visible) continue;
+            if (item._delegate instanceof PopupBaseMenuItem || item._delegate instanceof PopupMenuBase) {
+                let itemColumnWidths = item._delegate.getColumnWidths();
                 for (let j = 0; j < itemColumnWidths.length; j++) {
                     if (j >= columnWidths.length || itemColumnWidths[j] > columnWidths[j])
                         columnWidths[j] = itemColumnWidths[j];
@@ -1981,8 +1982,11 @@ var PopupMenuBase = class PopupMenuBase {
     setColumnWidths(widths) {
         let items = this.box.get_children();
         for (let i = 0; i < items.length; i++) {
-            if (items[i].maybeGet("_delegate") instanceof PopupBaseMenuItem || items[i].maybeGet("_delegate") instanceof PopupMenuBase)
-                items[i]._delegate.setColumnWidths(widths);
+            let item = items[i];
+            if (!item._delegate) continue;
+            if (item._delegate instanceof PopupBaseMenuItem || item._delegate instanceof PopupMenuBase) {
+                item._delegate.setColumnWidths(widths);
+            }
         }
     }
 
@@ -2179,7 +2183,7 @@ var PopupMenu = class PopupMenu extends PopupMenuBase {
      * Opens the popup menu
      */
     open(animate) {
-        if (this.isOpen || this.actor.is_finalized())
+        if (this.isOpen || isFinalized(this.actor))
             return;
 
         Main.popup_rendering_actor = this.actor;
@@ -2557,7 +2561,7 @@ var PopupMenu = class PopupMenu extends PopupMenuBase {
 
     _boxAllocate (box, flags) {
         this.box.allocate(box, flags);
-        if (!this.animating && !this.sourceActor.is_finalized() && this.sourceActor.get_stage() != null) {
+        if (!this.animating && !isFinalized(this.sourceActor) && this.sourceActor.get_stage() != null) {
             let [xPos, yPos] = this._calculatePosition();
             this.actor.set_position(xPos, yPos);
         }
@@ -3540,7 +3544,7 @@ var PopupMenuManager = class PopupMenuManager {
     }
 
     _activeMenuContains(actor) {
-        return !actor.is_finalized()
+        return !isFinalized(actor)
                 && this._activeMenu != null
                 && (this._activeMenu.actor.contains(actor) ||
                     (this._activeMenu.sourceActor && this._activeMenu.sourceActor.contains(actor)));
@@ -3553,7 +3557,7 @@ var PopupMenuManager = class PopupMenuManager {
     _shouldBlockEvent(event) {
         let src = event.get_source();
 
-        if (src.is_finalized() || (this._activeMenu != null && this._activeMenu.actor.contains(src)))
+        if (isFinalized(src) || (this._activeMenu != null && this._activeMenu.actor.contains(src)))
             return false;
 
         return (this._menus.find(x => x.sourceActor &&
@@ -3565,8 +3569,12 @@ var PopupMenuManager = class PopupMenuManager {
         if (!this.grabbed)
             return false;
 
-        if (Main.keyboard.shouldTakeEvent(event))
-            return Clutter.EVENT_PROPAGATE;
+        if (Main.keyboard.visible) {
+            const actor = event.get_source();
+            if (!isFinalized(actor) && Main.layoutManager.keyboardBox.contains(actor)) {
+                return Clutter.EVENT_PROPAGATE;
+            }
+        }
 
         if (this._owner.menuEventFilter &&
             this._owner.menuEventFilter(event))

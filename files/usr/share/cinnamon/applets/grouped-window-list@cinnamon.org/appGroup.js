@@ -262,7 +262,7 @@ class AppGroup {
     }
 
     updateIconBoxClip() {
-        let iconBottomClip = this.iconBox.style_length('app-icon-bottom-clip');
+        let iconBottomClip = styleLength(this.iconBox, 'app-icon-bottom-clip');
         let allocation = this.iconBox.allocation;
         if (iconBottomClip > 0) {
             this.iconBox.set_clip(
@@ -296,7 +296,7 @@ class AppGroup {
         let oldChild = this.iconBox.get_child();
         this.iconBox.set_child(icon);
 
-        if (oldChild) oldChild.destroy();
+        if (oldChild) destroy(oldChild);
     }
 
     setText(text) {
@@ -328,7 +328,7 @@ class AppGroup {
         this.actor.add_style_class_name('grouped-window-list-item-demands-attention');
         if (counter < 4) {
             setTimeout(() => {
-                if (this.actor && this.actor.has_style_class_name('grouped-window-list-item-demands-attention')) {
+                if (this.actor && !isFinalized(this.actor) && this.actor.has_style_class_name('grouped-window-list-item-demands-attention')) {
                     this.actor.remove_style_class_name('grouped-window-list-item-demands-attention');
                     this.actor.add_style_pseudo_class('active');
                 }
@@ -390,7 +390,7 @@ class AppGroup {
         } else {
             let offset = 0;
             if (this.state.orientation === St.Side.LEFT) {
-                offset += this.actor.style_length('border-left-width') * 2;
+                offset += styleLength(this.actor, 'border-left-width') * 2;
             }
             [childBox.x1, childBox.x2] = center(allocWidth + offset, naturalWidth);
         }
@@ -444,7 +444,7 @@ class AppGroup {
         if (this.labelVisible
             || !this.label
             || !this.state.isHorizontal
-            || this.label.is_finalized()
+            || isFinalized(this.label)
             || !this.label.realized) {
             return;
         }
@@ -477,7 +477,7 @@ class AppGroup {
     }
 
     hideLabel() {
-        if (!this.label || this.label.is_finalized() || !this.label.realized) return;
+        if (!this.label || isFinalized(this.label) || !this.label.realized) return;
 
         this.label.set_text('');
         this.labelVisible = false;
@@ -505,7 +505,7 @@ class AppGroup {
     }
 
     checkFocusStyle() {
-        if (this.actor.is_finalized()) return;
+        if (isFinalized(this.actor)) return;
 
         let focused = false;
         each(this.groupState.metaWindows, function(metaWindow) {
@@ -521,7 +521,7 @@ class AppGroup {
     }
 
     resetHoverStatus() {
-        if (this.actor.is_finalized()) return;
+        if (isFinalized(this.actor)) return;
         this.actor.remove_style_pseudo_class('hover');
     }
 
@@ -1022,7 +1022,7 @@ class AppGroup {
     }
 
     handleFavorite(changed) {
-        if (this.actor.is_finalized()) return;
+        if (isFinalized(this.actor)) return;
 
         if (changed) {
             setTimeout(() => this.listState.trigger('updateAppGroupIndexes', this.groupState.appId), 0);
@@ -1120,10 +1120,10 @@ class AppGroup {
         }
         if (this.hoverMenu) this.hoverMenu.destroy();
         this.listState.trigger('removeChild', this.actor);
-        this.actor.destroy();
+        destroy(this.actor);
 
         if (!skipRefCleanup) {
-            this.groupState.destroy();
+            destroy(this.groupState);
             unref(this, RESERVE_KEYS);
         }
     }

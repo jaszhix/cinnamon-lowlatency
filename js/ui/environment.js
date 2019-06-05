@@ -12,9 +12,12 @@ const Gettext = imports.gettext;
 const GLib = imports.gi.GLib;
 const Gtk = imports.gi.Gtk;
 const Cinnamon = imports.gi.Cinnamon;
+const {util_format_date} = Cinnamon;
 const St = imports.gi.St;
 const Meta = imports.gi.Meta;
 const Overrides = imports.ui.overrides;
+
+const BRACKET_REPLACE_REGEX = /\]$/;
 
 // We can't import cinnamon JS modules yet, because they may have
 // variable initializations, etc, that depend on init() already having
@@ -105,17 +108,17 @@ function init() {
     _patchContainerClass(St.Table);
 
     // Cache the original toString since it will be overriden for Clutter.Actor
-    GObject.Object.prototype._toString = GObject.Object.prototype.toString;
+    const {toString} = GObject.Object.prototype
     // Add method to determine if a GObject is finalized - needed to prevent accessing
     // objects that have been disposed in C code.
-    GObject.Object.prototype.is_finalized = function is_finalized() {
-        return this._toString().includes('FINALIZED');
+    window.isFinalized = function isFinalized(gObject) {
+        return toString.call(gObject).indexOf('FINALIZED') > -1;
     };
-    // Override destroy so it checks if its finalized before calling the real destroy method.
-    Clutter.Actor.prototype._destroy = Clutter.Actor.prototype.destroy;
-    Clutter.Actor.prototype.destroy = function destroy() {
-        if (!this.is_finalized()) {
-            this._destroy();
+    // External destroy helper that checks if the instance is finalized.
+    const _destroy = Clutter.Actor.prototype.destroy;
+    window.destroy = function destroy(actor) {
+        if (!isFinalized(actor)) {
+            _destroy.call(actor);
         }
     };
     Clutter.Actor.prototype.toString = function() {
@@ -123,32 +126,34 @@ function init() {
     };
 
     // Safe wrapper for theme inspection
-    St.Widget.prototype.style_length = function(property) {
-        if (this.is_finalized() || !this.realized) return 0;
-        if (!this.themeNode) {
-            this.themeNode = this.peek_theme_node();
-            this.connect('destroy', () => this.themeNode = null);
+    window.styleLength = function styleLength(stWidget, property) {
+        if (isFinalized(stWidget) || !stWidget.realized) return 0;
+        if (!stWidget.themeNode) {
+            stWidget.themeNode = stWidget.peek_theme_node();
         }
-        if (!this.themeNode) return 0;
-        return this.themeNode.get_length(property);
-    };
+        if (!stWidget.themeNode) return 0;
+        return stWidget.themeNode.get_length(property);
+    }
 
-    let origToString = Object.prototype.toString;
-    Object.prototype.toString = function() {
-        let base = origToString.call(this);
-        try {
-            if ('actor' in this && this.actor instanceof Clutter.Actor)
-                return base.replace(/\]$/, ' delegate for ' + this.actor.toString().substring(1));
-            else
-                return base;
-        } catch(e) {
-            return base;
+    window.toDelegateString = function toDelegateString(obj) {
+        let base = obj.toString();
+        if ('actor' in obj && obj.actor instanceof Clutter.Actor && !isFinalized(obj.actor)) {
+            return base.replace(BRACKET_REPLACE_REGEX, ' delegate for ' + obj.actor.toString().substring(1));
         }
+        return base;
     };
 
     // Work around https://bugzilla.mozilla.org/show_bug.cgi?id=508783
-    Date.prototype.toLocaleFormat = function(format) {
-        return Cinnamon.util_format_date(format, this.getTime());
+    window.toLocaleFormat = function toLocaleFormat(date, format) {
+        return util_format_date(format, date.getTime());
+    };
+
+    window.capitalize = function capitalize(string) {
+        return string.charAt(0).toUpperCase() + string.slice(1);
+    }
+
+    window.clamp = function clamp(number, min, max) {
+        return Math.min(Math.max(number, min), max);
     };
 
     let slowdownEnv = GLib.getenv('CINNAMON_SLOWDOWN_FACTOR');

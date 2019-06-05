@@ -712,7 +712,7 @@ class WindowThumbnail {
         } else {
             this.metaWindowActor = this.metaWindow.get_compositor_private();
         }
-        if (this.metaWindowActor && !this.metaWindowActor.is_finalized()) {
+        if (this.metaWindowActor && !isFinalized(this.metaWindowActor)) {
             this.signals.connect(this.metaWindowActor, 'size-changed', () => this.refreshThumbnail());
 
             let windowTexture = this.metaWindowActor.get_texture();
@@ -752,7 +752,7 @@ class WindowThumbnail {
         let monitor = this.state.trigger('getPanelMonitor');
         if (!monitor) return;
 
-        if (!this.thumbnailActor || this.thumbnailActor.is_finalized()) return;
+        if (!this.thumbnailActor || isFinalized(this.thumbnailActor)) return;
 
         let divider = 80 * global.ui_scale;
         let {thumbSize} = this.state.settings;
@@ -775,8 +775,8 @@ class WindowThumbnail {
             thumbnailSize = thumbnailWidth;
         }
 
-        let padding = this.thumbnailActor.style_length('padding');
-        let margin = this.thumbnailActor.style_length('margin');
+        let padding = styleLength(this.thumbnailActor, 'padding');
+        let margin = styleLength(this.thumbnailActor, 'margin');
 
         let i = 0;
         while (((thumbnailSize + this.thumbnailPadding + padding + margin) * this.groupState.windowCount > monitorSize)
@@ -816,7 +816,7 @@ class WindowThumbnail {
         if (!this.state.settings.enablePeek
             || this.state.overlayPreview
             || this.state.scrollActive
-            || (this.metaWindowActor && this.metaWindowActor.is_finalized())) {
+            || (this.metaWindowActor && isFinalized(this.metaWindowActor))) {
             return;
         }
         if (!this.metaWindowActor) {
@@ -852,7 +852,7 @@ class WindowThumbnail {
 
     _destroyOverlayPreview() {
         global.overlay_group.remove_child(this.state.overlayPreview);
-        this.state.overlayPreview.destroy();
+        destroy(this.state.overlayPreview);
         this.state.set({overlayPreview: null});
     }
 
@@ -863,9 +863,9 @@ class WindowThumbnail {
         this.state.disconnect(this.stateConnectId);
         this.groupState.disconnect(this.connectId);
         this.signals.disconnectAllSignals();
-        this.container.destroy();
-        this.bin.destroy();
-        this.actor.destroy();
+        destroy(this.container);
+        destroy(this.bin);
+        destroy(this.actor);
         unref(this, RESERVE_KEYS);
     }
 }
@@ -1048,14 +1048,14 @@ class AppThumbnailHoverMenu extends PopupMenu.PopupMenu {
             return;
         }
         if ((!this.groupState.metaWindows || this.groupState.metaWindows.length === 0)
-            && !this.groupState.tooltip._tooltip.is_finalized()) {
+            && !isFinalized(this.groupState.tooltip._tooltip)) {
             this.groupState.tooltip.set_text('');
             this.groupState.tooltip.hide();
         }
         if (this.isOpen) {
             this.state.set({thumbnailMenuOpen: false});
             each(this.appThumbnails, (thumb) => thumb.metaWindowActor.set_obscured(true));
-            if (!this.actor.is_finalized()) super.close(this.state.settings.animateThumbs);
+            if (!isFinalized(this.actor)) super.close(this.state.settings.animateThumbs);
         }
         for (let i = 0; i < this.appThumbnails.length; i++) {
             this.appThumbnails[i].destroyOverlayPreview();

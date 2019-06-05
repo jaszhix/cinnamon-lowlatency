@@ -26,7 +26,14 @@
         "get_locale_string": false,
         "__dirname": false,
         "__filename": false,
-        "__meta": false
+        "__meta": false,
+        "capitalize": false,
+        "clamp": false,
+        "isFinalized": false,
+        "styleLength": false,
+        "destroy": false,
+        "toDelegateString": false,
+        "toLocaleFormat": false
     },
     "rules": {
         "comma-dangle": 0,
